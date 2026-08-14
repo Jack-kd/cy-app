@@ -1,0 +1,25 @@
+{
+  "routes": [
+    {
+      "path": "/"
+    },
+    {
+      "path": "/data-management"
+    },
+    {
+      "path": "/user"
+    },
+    {
+      "path": "/settings"
+    },
+    {
+      "path": "/announcements"
+    },
+    {
+      "path": "/community"
+    },
+    {
+      "path": "/notifications"
+    }
+  ]
+}
