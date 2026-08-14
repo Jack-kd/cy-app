@@ -1,6 +1,8 @@
 package com.cy.app.ui.settings
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,12 +11,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Button
@@ -31,10 +34,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -43,6 +44,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -53,130 +55,163 @@ import com.cy.app.data.model.ThemeMode
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel,
-    onBack: () -> Unit,
+    onOpenDataManagement: () -> Unit,
 ) {
     val settings by viewModel.settings.collectAsState()
     var expandedProvider by remember { mutableStateOf(false) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("设置") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "返回") }
-                },
-            )
-        },
-    ) { pad ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(pad)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            // ===== 外观主题 =====
-            SectionHeader("外观主题")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ThemeMode.entries.forEach { mode ->
-                    val isSelected = settings.themeMode == mode
-                    OutlinedButton(
-                        onClick = { viewModel.setThemeMode(mode) },
-                        colors = if (isSelected) ButtonDefaults.buttonColors()
-                        else ButtonDefaults.outlinedButtonColors(),
-                    ) {
-                        Text(
-                            when (mode) {
-                                ThemeMode.Light -> "浅色"
-                                ThemeMode.Dark -> "深色"
-                                ThemeMode.System -> "跟随系统"
-                            },
-                        )
-                    }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Text("设置", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+
+        // ===== 外观主题 =====
+        SectionHeader("外观主题")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            ThemeMode.entries.forEach { mode ->
+                val isSelected = settings.themeMode == mode
+                OutlinedButton(
+                    onClick = { viewModel.setThemeMode(mode) },
+                    colors = if (isSelected) ButtonDefaults.buttonColors()
+                    else ButtonDefaults.outlinedButtonColors(),
+                    shape = RoundedCornerShape(12.dp),
+                ) {
+                    Text(
+                        when (mode) {
+                            ThemeMode.Light -> "浅色"
+                            ThemeMode.Dark -> "深色"
+                            ThemeMode.System -> "跟随系统"
+                        },
+                        fontSize = 13.sp,
+                    )
                 }
             }
+        }
 
-            // ===== 功能开关 =====
-            SectionHeader("功能开关")
-            ToggleRow("深度思考", "对问题进行深入分析和推理", settings.deepThink) {
-                viewModel.setDeepThink(it)
-            }
-            ToggleRow("全模态识别", "支持图片、文本等多种输入理解", false, null)
-            ToggleRow("长上下文记忆", "结合历史对话上下文生成回复", true, null)
+        // ===== 功能开关 =====
+        SectionHeader("功能开关")
+        ToggleRow("深度思考", "对问题进行深入分析和推理", settings.deepThink) {
+            viewModel.setDeepThink(it)
+        }
+        ToggleRow("全模态识别", "支持图片、文本等多种输入理解", false, null)
+        ToggleRow("长上下文记忆", "结合历史对话上下文生成回复", true, null)
 
-            // ===== 模型 & API =====
-            SectionHeader("模型 & API")
-            AiProviders.all.forEach { provider ->
-                Card(
+        // ===== 模型 & API =====
+        SectionHeader("模型 & API")
+        AiProviders.all.forEach { provider ->
+            GlassCard {
+                Text(provider.displayName, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                Spacer(Modifier.height(8.dp))
+
+                // API Key
+                ApiKeyField(
+                    label = "${provider.displayName} API Key",
+                    value = settings.apiKeys[provider.id].orEmpty(),
+                    onValueChange = { viewModel.setApiKey(provider.id, it) },
+                )
+                Spacer(Modifier.height(6.dp))
+
+                // Base URL
+                OutlinedTextField(
+                    value = settings.baseUrls[provider.id].orEmpty(),
+                    onValueChange = { viewModel.setBaseUrl(provider.id, it) },
+                    label = { Text("Base URL（可选，默认${provider.defaultBaseUrl}）") },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                    singleLine = true,
+                    shape = RoundedCornerShape(8.dp),
+                )
+                Spacer(Modifier.height(6.dp))
+
+                // 模型选择
+                ExposedDropdownMenuBox(
+                    expanded = expandedProvider,
+                    onExpandedChange = { expandedProvider = it },
                 ) {
-                    Column(modifier = Modifier.padding(12.dp)) {
-                        Text(provider.displayName, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        Spacer(Modifier.height(8.dp))
-
-                        // API Key
-                        ApiKeyField(
-                            label = "${provider.displayName} API Key",
-                            value = settings.apiKeys[provider.id].orEmpty(),
-                            onValueChange = { viewModel.setApiKey(provider.id, it) },
-                        )
-                        Spacer(Modifier.height(6.dp))
-
-                        // Base URL
-                        OutlinedTextField(
-                            value = settings.baseUrls[provider.id].orEmpty(),
-                            onValueChange = { viewModel.setBaseUrl(provider.id, it) },
-                            label = { Text("Base URL（可选，默认${provider.defaultBaseUrl}）") },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            shape = RoundedCornerShape(8.dp),
-                        )
-                        Spacer(Modifier.height(6.dp))
-
-                        // 模型选择
-                        ExposedDropdownMenuBox(
-                            expanded = expandedProvider,
-                            onExpandedChange = { expandedProvider = it },
-                        ) {
-                            OutlinedTextField(
-                                value = settings.modelOf(provider.id),
-                                onValueChange = {},
-                                readOnly = true,
-                                label = { Text("模型") },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedProvider) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .menuAnchor(),
-                                shape = RoundedCornerShape(8.dp),
+                    OutlinedTextField(
+                        value = settings.modelOf(provider.id),
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("模型") },
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedProvider) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .menuAnchor(),
+                        shape = RoundedCornerShape(8.dp),
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expandedProvider,
+                        onDismissRequest = { expandedProvider = false },
+                    ) {
+                        provider.models.forEach { model ->
+                            DropdownMenuItem(
+                                text = { Text(model) },
+                                onClick = {
+                                    viewModel.setModel(provider.id, model)
+                                    expandedProvider = false
+                                },
                             )
-                            ExposedDropdownMenu(
-                                expanded = expandedProvider,
-                                onDismissRequest = { expandedProvider = false },
-                            ) {
-                                provider.models.forEach { model ->
-                                    DropdownMenuItem(
-                                        text = { Text(model) },
-                                        onClick = {
-                                            viewModel.setModel(provider.id, model)
-                                            expandedProvider = false
-                                        },
-                                    )
-                                }
-                            }
                         }
                     }
                 }
             }
         }
+
+        // ===== 数据管理入口 =====
+        SectionHeader("数据")
+        GlassCard(
+            onClick = onOpenDataManagement,
+        ) {
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("数据管理", fontWeight = FontWeight.Medium, fontSize = 15.sp)
+                    Text("导出备份 · 数据恢复 · 清除数据", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Icon(
+                    Icons.Filled.ArrowForwardIos,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
     }
 }
 
 @Composable
 private fun SectionHeader(text: String) {
-    Text(text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+    Text(text, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+}
+
+@Composable
+private fun GlassCard(onClick: (() -> Unit)? = null, content: @Composable () -> Unit) {
+    val dark = isSystemInDarkTheme()
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = if (dark) Color(0xFF191C34) else Color.White.copy(alpha = 0.72f),
+        ),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            if (dark) Color.White.copy(alpha = 0.06f) else Color.Black.copy(alpha = 0.04f),
+        ),
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            content()
+        }
+    }
 }
 
 @Composable
@@ -193,7 +228,7 @@ private fun ToggleRow(title: String, desc: String, checked: Boolean, onCheck: ((
             Switch(checked = checked, onCheckedChange = onCheck)
         }
     }
-    HorizontalDivider()
+    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
 }
 
 @Composable
