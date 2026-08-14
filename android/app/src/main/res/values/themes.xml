@@ -1,0 +1,4 @@
+<resources>
+    <!-- Compose 全权接管 UI，仅需要无 ActionBar 的宿主主题 -->
+    <style name="Theme.ChuYi" parent="android:Theme.Material.Light.NoActionBar" />
+</resources>
